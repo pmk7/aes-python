@@ -1,5 +1,12 @@
 import unittest
 from rijndael import AES, encrypt, decrypt
+import ctypes
+
+rijndael = ctypes.CDLL('./rijndael.so')
+
+
+
+
 
 class TestBlock(unittest.TestCase):
     """
@@ -35,6 +42,18 @@ class TestBlock(unittest.TestCase):
         key     = b'\x2B\x7E\x15\x16\x28\xAE\xD2\xA6\xAB\xF7\x15\x88\x09\xCF\x4F\x3C'
         ciphertext = AES(bytes(key)).encrypt_block(bytes(message))
         self.assertEqual(ciphertext, b'\x39\x25\x84\x1D\x02\xDC\x09\xFB\xDC\x11\x85\x97\x19\x6A\x0B\x32')
+
+
+    def test_sub_bytes(self):
+        """ Test the sub_bytes function. """
+        buffer = b'\x00\x01\x02\x03\x04\x05\x06\x07'
+        buffer += b'\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F'
+        block = ctypes.create_string_buffer(buffer)
+        rijndael.sub_bytes(block)
+        expected = b'\x63\x7c\x77\x7b\xf2\x6b\x6f\xc5'  # First 8 bytes
+        expected += b'\x30\x01\x67\x2b\xfe\xd7\xab\x76'  # Next 8 bytes
+        expected += b'\x00'  # Trailing null byte
+        self.assertEqual(block.raw, expected)
 
 class TestKeySizes(unittest.TestCase):
     """

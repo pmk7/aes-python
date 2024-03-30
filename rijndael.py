@@ -521,8 +521,7 @@ def benchmark():
 __all__ = ["encrypt", "decrypt", "AES"]
 
 if __name__ == '__main__':
-    
-    
+    import sys
     write = lambda b: sys.stdout.buffer.write(b)
     read = lambda: sys.stdin.buffer.read()
     
