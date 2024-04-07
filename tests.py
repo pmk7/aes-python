@@ -5,8 +5,85 @@ import ctypes
 rijndael = ctypes.CDLL('./rijndael.so')
 
 
+class TestAESEncrypt(unittest.TestCase):
+    def test_aes_encrypt(self):
+        """Test the aes_encrypt function."""
+        plaintext = b'\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F'
+        key = b'\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F'
+        expected_ciphertext = b'\n\x94\x0b\xb5An\xf0E\xf1\xc3\x94X\xc6S\xeaZ'
+
+        # Define the argument types and return type of the function
+        rijndael.aes_encrypt_block.argtypes = [ctypes.POINTER(ctypes.c_ubyte), ctypes.POINTER(ctypes.c_ubyte)]
+        rijndael.aes_encrypt_block.restype = ctypes.POINTER(ctypes.c_ubyte)
+
+        # Convert the plaintext and key to ctypes arrays
+        plaintext_arr = (ctypes.c_ubyte * len(plaintext))(*plaintext)
+        key_arr = (ctypes.c_ubyte * len(key))(*key)
+
+        # Call the function and convert the result to a bytes object
+        ciphertext_ptr = rijndael.aes_encrypt_block(plaintext_arr, key_arr)
+        ciphertext = bytes(ciphertext_ptr[:16])
+
+        self.assertEqual(ciphertext, expected_ciphertext)
+        
+
+class TestAES(unittest.TestCase):
+    def setUp(self):
+        self.lib = ctypes.CDLL('./rijndael.so')
+        self.lib.aes_encrypt_block.restype = ctypes.POINTER(ctypes.c_ubyte * 16)
+        self.lib.aes_decrypt_block.restype = ctypes.POINTER(ctypes.c_ubyte * 16)
+        self.lib.free.argtypes = [ctypes.c_void_p]
+
+    # def test_aes_encryption_decryption(self):
+    #     plaintext = (ctypes.c_ubyte * 16)(0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d, 0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07, 0x34)
+    #     key = (ctypes.c_ubyte * 16)(0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c)
+
+    #     ciphertext_ptr = self.lib.aes_encrypt_block(plaintext, key)
+    #     ciphertext = ciphertext_ptr.contents
+
+    #     decrypted_plaintext_ptr = self.lib.aes_decrypt_block(ciphertext_ptr, key)
+    #     decrypted_plaintext = decrypted_plaintext_ptr.contents
+
+    #     # Verify
+    #     self.assertEqual(bytes(decrypted_plaintext), bytes(plaintext))
+
+    #     # Free allocated memory
+    #     self.lib.free(ciphertext_ptr)
+    #     self.lib.free(decrypted_plaintext_ptr)
 
 
+
+    # unit test 1
+    def test_sub_bytes(self):
+        """ Test the sub_bytes function. """
+        buffer = b'\x00\x01\x02\x03\x04\x05\x06\x07'
+        buffer += b'\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F'
+        block = ctypes.create_string_buffer(buffer)
+        rijndael.sub_bytes(block)
+        expected = b'\x63\x7c\x77\x7b\xf2\x6b\x6f\xc5'  # First 8 bytes
+        expected += b'\x30\x01\x67\x2b\xfe\xd7\xab\x76'  # Next 8 bytes
+        expected += b'\x00'  # Trailing null byte
+        self.assertEqual(block.raw, expected)
+        
+    # unit test 2
+    def test_shift_rows(self):
+        """Test the shift_rows function."""
+        buffer = b'\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F'
+        block = ctypes.create_string_buffer(buffer)
+        rijndael.shift_rows(block)
+        expected = b'\x00\x05\n\x0f\x04\t\x0e\x03\x08\r\x02\x07\x0c\x01\x06\x0b'
+        self.assertEqual(block.raw[:16], expected)
+
+    
+    # unit test 3
+    def test_mix_columns(self):
+        """Test the mix_columns function."""
+        buffer = b'\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F'
+        block = ctypes.create_string_buffer(buffer)
+        rijndael.mix_columns(block)
+        expected = b'\x02\x07\x00\x05\x06\x03\x04\x01\n\x0f\x08\r\x0e\x0b\x0c\t'
+        self.assertEqual(block.raw[:16], expected)
+        
 
 class TestBlock(unittest.TestCase):
     """
@@ -44,16 +121,7 @@ class TestBlock(unittest.TestCase):
         self.assertEqual(ciphertext, b'\x39\x25\x84\x1D\x02\xDC\x09\xFB\xDC\x11\x85\x97\x19\x6A\x0B\x32')
 
 
-    def test_sub_bytes(self):
-        """ Test the sub_bytes function. """
-        buffer = b'\x00\x01\x02\x03\x04\x05\x06\x07'
-        buffer += b'\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F'
-        block = ctypes.create_string_buffer(buffer)
-        rijndael.sub_bytes(block)
-        expected = b'\x63\x7c\x77\x7b\xf2\x6b\x6f\xc5'  # First 8 bytes
-        expected += b'\x30\x01\x67\x2b\xfe\xd7\xab\x76'  # Next 8 bytes
-        expected += b'\x00'  # Trailing null byte
-        self.assertEqual(block.raw, expected)
+
 
 class TestKeySizes(unittest.TestCase):
     """
@@ -420,10 +488,13 @@ class TestFunctions(unittest.TestCase):
             ciphertext = self.encrypt(self.key, self.message)
             ciphertext = ciphertext[:-1] + b'a'
             self.decrypt(self.key, ciphertext)
+            
+            
+       
 
 
-def run():
-    unittest.main()
+
 
 if __name__ == '__main__':
-    run()
+    unittest.main()
+
